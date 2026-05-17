@@ -4,7 +4,7 @@ WITH deduped AS (
     SELECT
         *,
         ROW_NUMBER() OVER (
-            PARTITION BY ad_id, date
+            PARTITION BY ad_id, date 
             ORDER BY timestamp DESC
         ) AS rn
     FROM `marketing-analytics-skelar.marketing_raw.marketing_ads_raw`
