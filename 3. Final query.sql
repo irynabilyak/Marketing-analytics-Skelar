@@ -39,7 +39,7 @@ channel_metrics AS (
 ),
 
 final AS (
-    -- Крок 4 (Бонус): додаємо LTV і рахуємо LTV/CAC
+    -- Крок 4: додаємо LTV і рахуємо LTV/CAC
     SELECT
         source,
         total_spend,
