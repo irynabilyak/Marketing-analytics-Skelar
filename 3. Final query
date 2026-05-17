@@ -1,0 +1,68 @@
+WITH deduped AS (
+    -- Крок 1: залишаємо останній snapshot за кожен день
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY ad_id, date
+            ORDER BY timestamp DESC
+        ) AS rn
+    FROM `marketing-analytics-skelar.marketing_raw.marketing_ads_raw`
+),
+
+daily AS (
+    -- Крок 2: денні метрики по (source, date)
+    SELECT
+        source,
+        date,
+        SUM(spend)         AS daily_spend,
+        SUM(impressions)   AS daily_impressions,
+        SUM(clicks)        AS daily_clicks,
+        SUM(installs)      AS daily_installs,
+        SUM(registrations) AS daily_registrations
+    FROM deduped
+    WHERE rn = 1
+    GROUP BY source, date
+),
+
+channel_metrics AS (
+    -- Крок 3: фінальні метрики по каналу
+    SELECT
+        source,
+        ROUND(SUM(daily_spend), 2)                                                        AS total_spend,
+        ROUND(SUM(daily_spend) / SUM(daily_impressions) * 1000, 2)                       AS cpm,
+        ROUND(CAST(SUM(daily_clicks) AS FLOAT64) / SUM(daily_impressions) * 100, 2)      AS ctr_pct,
+        ROUND(CAST(SUM(daily_installs) AS FLOAT64) / SUM(daily_clicks) * 100, 2)         AS cr_click_install_pct,
+        ROUND(CAST(SUM(daily_registrations) AS FLOAT64) / SUM(daily_installs) * 100, 2)  AS cr_install_reg_pct,
+        ROUND(SUM(daily_spend) / SUM(daily_registrations), 2)                            AS cac
+    FROM daily
+    GROUP BY source
+),
+
+final AS (
+    -- Крок 4 (Бонус): додаємо LTV і рахуємо LTV/CAC
+    SELECT
+        source,
+        total_spend,
+        cpm,
+        ctr_pct,
+        cr_click_install_pct,
+        cr_install_reg_pct,
+        cac,
+        CASE source
+            WHEN 'tiktok' THEN 8.50
+            WHEN 'meta'   THEN 6.20
+            WHEN 'google' THEN 12.40
+        END AS ltv,
+        ROUND(
+            CASE source
+                WHEN 'tiktok' THEN 8.50
+                WHEN 'meta'   THEN 6.20
+                WHEN 'google' THEN 12.40
+            END / cac, 2
+        ) AS ltv_cac_ratio
+    FROM channel_metrics
+)
+
+SELECT *
+FROM final
+ORDER BY cac
