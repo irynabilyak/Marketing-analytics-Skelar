@@ -1,4 +1,4 @@
-#Monthly Marketing Performance Report
+# Monthly Marketing Performance Report
 Ціль
 Побудувати Tableau-дашборд, який:
 Може використовуватись щомісяця як основа для рішень по розподілу бюджету.
